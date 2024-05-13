@@ -16,9 +16,10 @@
     "@gluestack-ui/themed": "^1.1.22",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-three/drei": "^9.105.3",
-    "@react-three/fiber": "^8.16.1",
+    "@react-three/fiber": "^8.16.6",
     "@shopify/react-native-skia": "1.2.3",
     "@supabase/supabase-js": "^2.42.4",
+    "@types/three": "^0.164.0",
     "convex": "^1.11.0",
     "expo": "~51.0.4",
     "expo-constants": "~16.0.1",
@@ -48,6 +49,7 @@
     "react-native-simple-line-chart": "^0.34.4",
     "react-native-svg": "15.2.0",
     "react-native-url-polyfill": "^2.0.0",
+    "three": "^0.164.1",
     "three-stdlib": "^2.29.6"
   },
   "devDependencies": {

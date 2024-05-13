@@ -1,132 +1,24 @@
-// import React, { useEffect, useState } from 'react';
-// import { View, Text, Modal, StyleSheet, ScrollView, Button, Alert } from 'react-native';
-// import { Accelerometer } from 'expo-sensors';
-
-// const ACCELERATION_THRESHOLD = 10.5; // Threshold for significant acceleration change (tweak based on testing)
-// const BUFFER_DURATION = 2000; // Duration to keep data in buffer (2 seconds)
-
-// const Chats = () => {
-//   const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
-//   const [dataBuffer, setDataBuffer] = useState([]);
-//   const [modalVisible, setModalVisible] = useState(false);
-
-//   const handleAcceleration = (data) => {
-//     const { x, y, z } = data;
-//     const now = Date.now();
-//     const newData = { x, y, z, time: now };
-//     let buffer = [...dataBuffer, newData];
-//     // Remove data older than 2 seconds
-//     buffer = buffer.filter(d => now - d.time <= BUFFER_DURATION);
-//     setDataBuffer(buffer);
-
-//     if (buffer.length > 1) {
-//       let accumulatedChange = 0;
-//       for (let i = 1; i < buffer.length; i++) {
-//         const prev = buffer[i - 1];
-//         const curr = buffer[i];
-//         const delta = Math.sqrt(
-//           Math.pow(curr.x - prev.x, 2) +
-//           Math.pow(curr.y - prev.y, 2) +
-//           Math.pow(curr.z - prev.z, 2)
-//         );
-//         accumulatedChange += delta;
-//       }
-
-//       if (accumulatedChange > ACCELERATION_THRESHOLD) {
-//         setModalVisible(true); // Trigger modal or any other action when threshold is exceeded
-//       }
-//     }
-//     setAccelerometerData(data);
-//   };
-
-//   useEffect(() => {
-//     Accelerometer.setUpdateInterval(50); // Set update interval to 50ms for finer granularity
-//     const subscription = Accelerometer.addListener(handleAcceleration);
-
-//     return () => subscription.remove();
-//   }, [dataBuffer]);
-
-//   return (
-//     <View style={styles.container}>
-//       <ScrollView>
-//         <Modal
-//           animationType="slide"
-//           transparent={true}
-//           visible={modalVisible}
-//           onRequestClose={() => {
-//             Alert.alert('Modal has been closed.');
-//             setModalVisible(!modalVisible);
-//           }}
-//         >
-//           <View style={styles.centeredView}>
-//             <View style={styles.modalView}>
-//               <Text style={styles.modalText}>Significant Movement Detected!</Text>
-//               <Button title="I need help!" onPress={() => setModalVisible(false)} />
-//               <Button title="I'm okay, dismiss." onPress={() => setModalVisible(false)} />
-//             </View>
-//           </View>
-//         </Modal>
-//       </ScrollView>
-//     </View>
-//   );
-// };
-
-// export default Chats;
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#fff',
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-//   dataText: {
-//     marginBottom: 10,
-//     fontSize: 16,
-//   },
-//   centeredView: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginTop: 22,
-//   },
-//   modalView: {
-//     margin: 20,
-//     backgroundColor: 'white',
-//     borderRadius: 20,
-//     padding: 35,
-//     alignItems: 'center',
-//     shadowColor: '#000',
-//     shadowOffset: {
-//       width: 0,
-//       height: 2,
-//     },
-//     shadowOpacity: 0.25,
-//     shadowRadius: 4,
-//     elevation: 5,
-//   },
-//   modalText: {
-//     marginBottom: 15,
-//     textAlign: 'center',
-//     fontSize: 18,
-//   }
-// });
-
 import { Box, Text } from "@gluestack-ui/themed";
 import { ScrollView } from "moti";
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { View, Dimensions, StyleSheet } from "react-native";
+import { View, Dimensions, StyleSheet, Modal, Alert, Button } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import LineChart from "react-native-simple-line-chart";
 import { MotiView } from 'moti';
 import { supabase } from "@/utils/supabase";
+
+const ACCELERATION_THRESHOLD = 1.0;
+const BUFFER_DURATION = 2000; 
 
 export default function App() {
   const [data, setData] = React.useState([]);
   const [timePassed, setTimePassed] = React.useState(0);
   const [spo2, setSpo2] = useState(98); 
   const [bpm, setBpm] = useState(56);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [accelerationData, setAccelerationData] = useState([]);
+
 
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -173,18 +65,43 @@ export default function App() {
   useEffect(() => {
     const subscription = supabase.channel('room-1')
       .on('broadcast', { event: 'new-data' }, (payload) => {
-          //console.log(payload.payload.heartRateSpo2Data.spo2)
-         // console.log(payload.payload.heartRateSpo2Data.bpm)
-          console.log(payload.payload)
-          setSpo2(payload.payload.heartRateSpo2Data.spo2)
-          setBpm(payload.payload.heartRateSpo2Data.bpm)
+        const { ax, ay, az } = payload.payload.accelerometerGyroscopeData;
+        const newData = { ax, ay, az, time: new Date().getTime() };
+  
+        setAccelerationData(current => {
+          // Filter to keep only recent data within the BUFFER_DURATION
+          const filteredData = current.filter(d => newData.time - d.time <= BUFFER_DURATION);
+  
+          // Calculate accumulatedChange if there's enough data
+          let accumulatedChange = 0;
+          for (let i = 1; i < filteredData.length; i++) {
+            const prev = filteredData[i - 1];
+            const curr = filteredData[i];
+            accumulatedChange += Math.sqrt(
+              Math.pow(curr.ax - prev.ax, 2) +
+              Math.pow(curr.ay - prev.ay, 2) +
+              Math.pow(curr.az - prev.az, 2)
+            );
+          }
+  
+          // Trigger modal if accumulatedChange exceeds threshold
+          if (accumulatedChange > ACCELERATION_THRESHOLD) {
+            console.log("Threshold exceeded, showing modal.");
+            setModalVisible(true);
+          }
+  
+          // Add new data to the buffer
+          return [...filteredData, newData];
+        });
+  
+        setSpo2(payload.payload.heartRateSpo2Data.spo2);
+        setBpm(payload.payload.heartRateSpo2Data.bpm);
       })
       .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
+  
+  
 
   return (
     <ScrollView
@@ -204,6 +121,23 @@ export default function App() {
             transition={{ delay: index * 400, type: 'spring', duration: 250 }}
             style={{ width: '100%' }}
           >
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => {
+              Alert.alert('Modal has been closed.');
+              setModalVisible(!modalVisible);
+            }}
+          >
+            <View style={styles.centeredView}>
+              <View style={styles.modalView}>
+                <Text style={styles.modalText}>Movimiento Significativo Detectado!</Text>
+                <Button title="Llamar Emergencias!" onPress={() => setModalVisible(false)} />
+                <Button title="Todo esta Bien" onPress={() => setModalVisible(false)} />
+              </View>
+            </View>
+          </Modal>
             <Box
               bgColor="$white"
               width={"$full"}
@@ -284,4 +218,40 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: "center",
   },
-});
+  containerModal: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dataText: {
+    marginBottom: 10,
+    fontSize: 16,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+    fontSize: 18,
+  }
+})
