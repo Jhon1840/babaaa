@@ -7,26 +7,48 @@ import {
   InputField,
   Button,
   ButtonText,
-  Text
+  Text,
+  ToastTitle,
+  ToastDescription,
+  Toast,
+  useToast
 } from "@gluestack-ui/themed";
 import { supabase } from "@/utils/supabase";
 import { useRouter } from "expo-router";
 
 const signup = () => {
   const [trackerId, setTrackerId] = useState('')
-
-  const router = useRouter()
+  const toast = useToast();
+  const router = useRouter();
 
   const findTracker = async () => {
 
     let { data: trackerData, error } = await supabase
-    .from('tracker')
+    .from('room_device')
     .select('*')
-    .eq('tracker', trackerId)
+    .eq('device_name', trackerId)
 
-    if(trackerData){
-      console.log('Device Exist')
+    if(trackerData?.length != 0){
+      console.log(trackerData)
       router.replace('/account')
+    }else{
+      console.log(trackerData)
+      toast.show({
+        placement: "top",
+        render: ({ id }) => {
+          const toastId = "toast-" + id
+          return (
+            <Toast nativeID={toastId} action="error" variant="solid">
+              <VStack space="xs">
+                <ToastTitle>Error</ToastTitle>
+                <ToastDescription>
+                  Codigo de Dispositivo no existe
+                </ToastDescription>
+              </VStack>
+            </Toast>
+          )
+        },
+      });
     }
 
   }
@@ -59,7 +81,7 @@ const signup = () => {
                     isInvalid={false}
                     isReadOnly={false}
                 >
-                    <InputField placeholder="AU134TH" />
+                    <InputField placeholder="AU134TH" value={trackerId} onChangeText={setTrackerId} />
                 </Input>
             </VStack>
 

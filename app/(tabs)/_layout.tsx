@@ -33,6 +33,16 @@ const Layout = () => {
         }}
       />
       <Tabs.Screen
+        name="threed"
+        options={{
+          tabBarLabel: '3d',
+          headerTitle: 'Movimientos',
+          tabBarIcon: ({ size, color }) => (
+            <Ionicons name="move-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           tabBarLabel: 'Notificaciones',

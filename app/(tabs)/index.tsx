@@ -120,15 +120,18 @@ import { View, Dimensions, StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import LineChart from "react-native-simple-line-chart";
 import { MotiView } from 'moti';
+import { supabase } from "@/utils/supabase";
 
 export default function App() {
   const [data, setData] = React.useState([]);
   const [timePassed, setTimePassed] = React.useState(0);
+  const [spo2, setSpo2] = useState(98); 
+  const [bpm, setBpm] = useState(56);
 
   React.useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date().getTime();
-      const beatInterval = 900;
+      const beatInterval = (bpm/60)*1000;
       const peak = 100;
       const baseline = 50;
       let y;
@@ -167,6 +170,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, [timePassed]);
 
+  useEffect(() => {
+    const subscription = supabase.channel('room-1')
+      .on('broadcast', { event: 'new-data' }, (payload) => {
+          //console.log(payload.payload.heartRateSpo2Data.spo2)
+         // console.log(payload.payload.heartRateSpo2Data.bpm)
+          console.log(payload.payload)
+          setSpo2(payload.payload.heartRateSpo2Data.spo2)
+          setBpm(payload.payload.heartRateSpo2Data.bpm)
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <ScrollView
       contentContainerStyle={{
@@ -198,7 +217,7 @@ export default function App() {
                 fontSize="$2xl"
                 color={index === 0 ? "$green400" : "black"}
               >
-                {index === 0 ? "Normal" : index === 1 ? "36 C" : index === 2 ? "98 Spo2" : "60 BPM"}
+                {index === 0 ? "Normal" : index === 1 ? "36 C" : index === 2 ? spo2 : bpm}
               </Text>
               <Text paddingTop={"$4"} paddingHorizontal="$5" fontWeight="$light">
                 {index === 0 ? "Estado de Salud" : index === 1 ? "Temperatura" : index === 2 ? "Nivel de Oxigeno en la Sangre" : "Frecuencia Cardiaca"}

@@ -5,12 +5,15 @@ import { Box, HStack, Text, VStack, Button, ButtonText } from "@gluestack-ui/the
 import { Ionicons } from "@expo/vector-icons";
 import { MotiView, View } from "moti";
 import { TouchableOpacity, Share } from "react-native";
+import { supabase } from "@/utils/supabase";
 
 const Ubication = () => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [showCardInfo, setShowCardInfo] = useState(false);
-
+  const [latitud, setLatitud] = useState(0);
+  const [longitud, setLongitud] = useState(0);
+  
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -24,6 +27,20 @@ const Ubication = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    const subscription = supabase.channel('room-1')
+      .on('broadcast', { event: 'new-data' }, (payload) => {
+          console.log(payload.payload.accelerometerGyroscopeData)
+          setLatitud(payload.payload.accelerometerGyroscopeData.latitude)
+          setLongitud(payload.payload.accelerometerGyroscopeData.longitude)
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   let text = "Waiting..";
   if (errorMsg) {
     text = errorMsg;
@@ -32,8 +49,8 @@ const Ubication = () => {
   }
 
   const shareLocation = () => {
-    const lat = location.coords.latitude;
-    const lon = location.coords.longitude;
+    const lat = latitud;
+    const lon = longitud;
     const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
     Share.share({
       message: `Esta es la ubicacion de Papa: ${googleMapsLink}`,
@@ -58,8 +75,8 @@ const Ubication = () => {
       >
         <Marker
           coordinate={{
-            latitude: -17.78629,
-            longitude: -63.18117,
+            latitude: latitud,
+            longitude: longitud,
           }}
         >
           <MotiView

@@ -14,14 +14,6 @@ import useOnboardingStatus from "@/hooks/useOnboardingStatus";
 import OnboardingScreen from "@/views/OnboardingScreen";
 
 LogBox.ignoreAllLogs();
-
-const convex = new ConvexReactClient(
-  process.env.EXPO_PUBLIC_CONVEX_URL as string,
-  {
-    unsavedChangesWarning: false,
-  }
-);
-
 SplashScreen.preventAutoHideAsync();
 
 const InitialLayout = () => {
@@ -61,17 +53,11 @@ export default function Rootlayout() {
 
   return (
     <GluestackUIProvider config={config}>
-      <ClerkProvider
-        publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY as string}
-      >
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           {hasShownOnboarding === false ? (
             <OnboardingScreen onFinish={handleOnboardingFinish} />
           ) : (
             <InitialLayout />
           )}
-        </ConvexProviderWithClerk>
-      </ClerkProvider>
     </GluestackUIProvider>
   );
 }

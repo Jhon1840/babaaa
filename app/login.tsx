@@ -18,13 +18,18 @@ import {
     ButtonText,
     Image,
     Text,
-    KeyboardAvoidingView
+    KeyboardAvoidingView,
+    Toast,
+    useToast,
+    ToastTitle,
+    ToastDescription
   } from "@gluestack-ui/themed";
 import { Link, useRouter } from "expo-router";
 import { supabase } from "@/utils/supabase";
 
 const login = () => {
   const router = useRouter()
+  const toast = useToast();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,14 +41,50 @@ const login = () => {
   };
 
   const onSignInPress = async () => {
-    let { data, error } = await supabase.auth.signInWithPassword({
-      email: emailAddress,
-      password: password
-    })
+    try{
+        let { data, error } = await supabase.auth.signInWithPassword({
+          email: emailAddress,
+          password: password
+        })
 
-    if(data){
-      console.log(data)
-      router.replace('/(tabs)')
+        if(data.session){
+          toast.show({
+            placement: "top",
+            render: ({ id }) => {
+              const toastId = "toast-" + id
+              return (
+                <Toast nativeID={toastId} action="success" variant="solid">
+                  <VStack space="xs">
+                    <ToastTitle>Login Existoso</ToastTitle>
+                    <ToastDescription>
+                      Bienvenido
+                    </ToastDescription>
+                  </VStack>
+                </Toast>
+              )
+            },
+          });
+          router.replace('/(tabs)')
+        }else{
+          toast.show({
+            placement: "top",
+            render: ({ id }) => {
+              const toastId = "toast-" + id
+              return (
+                <Toast nativeID={toastId} action="error" variant="solid">
+                  <VStack space="xs">
+                    <ToastTitle>Error</ToastTitle>
+                    <ToastDescription>
+                      Datos Incorrectos
+                    </ToastDescription>
+                  </VStack>
+                </Toast>
+              )
+            },
+          });
+        }
+    }catch(e){
+      console.log(e)
     }
   }
 
