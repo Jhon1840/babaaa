@@ -8,7 +8,7 @@ import LineChart from "react-native-simple-line-chart";
 import { MotiView } from 'moti';
 import { supabase } from "@/utils/supabase";
 
-const ACCELERATION_THRESHOLD = 1.0;
+const ACCELERATION_THRESHOLD = 3.0;
 const BUFFER_DURATION = 2000; 
 
 export default function App() {

@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber/native";
 import { Box, Plane } from "@react-three/drei/native";
 import React, {useEffect, useState} from 'react'
 import { supabase } from '@/utils/supabase';
-import model from '@/assets/model/amongus.glb'
+import model from '@/assets/model/grandpa.glb'
 import { useGLTF } from '@react-three/drei/native'
 
 export function Model(props) {
@@ -13,33 +13,59 @@ export function Model(props) {
       <mesh
         castShadow
         receiveShadow
-        geometry={nodes.piernas.geometry}
-        material={materials['Material Rojo']}
+        geometry={nodes.eyes_right_eye.geometry}
+        material={nodes.eyes_right_eye.material}
       />
       <mesh
         castShadow
         receiveShadow
-        geometry={nodes.cristal.geometry}
-        material={materials.Cristal}
+        geometry={nodes.eyes_left_eye.geometry}
+        material={nodes.eyes_left_eye.material}
       />
       <mesh
         castShadow
         receiveShadow
-        geometry={nodes.mochila.geometry}
-        material={materials['Material Rojo']}
+        geometry={nodes.Ned_Cube.geometry}
+        material={nodes.Ned_Cube.material}
       />
-      <mesh castShadow receiveShadow geometry={nodes.Plane.geometry} material={materials.Birrete} />
-      <mesh
-        castShadow
-        receiveShadow
-        geometry={nodes.amongos_cuerpo_copia.geometry}
-        material={materials['Material Rojo']}
-      />
-      <mesh castShadow receiveShadow geometry={nodes.gorro.geometry} material={materials.Birrete} />
-      <mesh castShadow receiveShadow geometry={nodes.boton.geometry} material={materials.Botton} />
     </group>
   )
 }
+
+// export function Model(props) {
+//   const { nodes, materials } = useGLTF(model)
+//   return (
+//     <group {...props} dispose={null} scale={20}>
+//       <mesh
+//         castShadow
+//         receiveShadow
+//         geometry={nodes.piernas.geometry}
+//         material={materials['Material Rojo']}
+//       />
+//       <mesh
+//         castShadow
+//         receiveShadow
+//         geometry={nodes.cristal.geometry}
+//         material={materials.Cristal}
+//       />
+//       <mesh
+//         castShadow
+//         receiveShadow
+//         geometry={nodes.mochila.geometry}
+//         material={materials['Material Rojo']}
+//       />
+//       <mesh castShadow receiveShadow geometry={nodes.Plane.geometry} material={materials.Birrete} />
+//       <mesh
+//         castShadow
+//         receiveShadow
+//         geometry={nodes.amongos_cuerpo_copia.geometry}
+//         material={materials['Material Rojo']}
+//       />
+//       <mesh castShadow receiveShadow geometry={nodes.gorro.geometry} material={materials.Birrete} />
+//       <mesh castShadow receiveShadow geometry={nodes.boton.geometry} material={materials.Botton} />
+//     </group>
+//   )
+// }
 
 const Threed = () => {
   const [rotation, setRotation] = useState<[number, number, number]>([0,0,0])
@@ -66,8 +92,8 @@ const Threed = () => {
           castShadow
           color={"#a8e344f"}
         />
-        <Box position={[0, 0.5, 0]} rotation={rotation} castShadow />
-        {/* <Model position={[0, 0, 0]} rotation={rotation} castShadow /> */}
+        {/* <Box position={[0, 0.5, 0]} rotation={rotation} castShadow /> */}
+        <Model position={[0, 0, -50]} rotation={rotation} castShadow />
         <Plane
           args={[10, 10]}
           rotation={[-Math.PI / 2, 0, 0]}

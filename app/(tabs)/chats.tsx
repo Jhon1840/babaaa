@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { Modal, TouchableOpacity, Share, View as RNView } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import * as Location from "expo-location";
 import { Box, HStack, Text, VStack, Button, ButtonText } from "@gluestack-ui/themed";
 import { Ionicons } from "@expo/vector-icons";
 import { MotiView, View } from "moti";
-import { TouchableOpacity, Share } from "react-native";
 import { supabase } from "@/utils/supabase";
 
 const Ubication = () => {
@@ -13,7 +13,8 @@ const Ubication = () => {
   const [showCardInfo, setShowCardInfo] = useState(false);
   const [latitud, setLatitud] = useState(0);
   const [longitud, setLongitud] = useState(0);
-  
+  const [modalVisible, setModalVisible] = useState(false);
+
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -30,16 +31,23 @@ const Ubication = () => {
   useEffect(() => {
     const subscription = supabase.channel('room-1')
       .on('broadcast', { event: 'new-data' }, (payload) => {
-          console.log(payload.payload.accelerometerGyroscopeData)
-          setLatitud(payload.payload.accelerometerGyroscopeData.latitude)
-          setLongitud(payload.payload.accelerometerGyroscopeData.longitude)
+        console.log(payload.payload.accelerometerGyroscopeData);
+        setLatitud(payload.payload.accelerometerGyroscopeData.latitude);
+        setLongitud(payload.payload.accelerometerGyroscopeData.longitude);
       })
       .subscribe();
 
+    const timeout = setTimeout(() => {
+      if (latitud === 0 && longitud === 0) {
+        setModalVisible(true);
+      }
+    }, 5000); // Show modal if no location data is received within 5 seconds
+
     return () => {
       subscription.unsubscribe();
+      clearTimeout(timeout);
     };
-  }, []);
+  }, [latitud, longitud]);
 
   let text = "Waiting..";
   if (errorMsg) {
@@ -135,8 +143,8 @@ const Ubication = () => {
               >
                 <VStack>
                   <Text>Estado: Normal</Text>
-                  <Text> Latitud: -17.78629</Text>
-                  <Text> Longitud: -17.78629</Text>
+                  <Text> Latitud: {latitud}</Text>
+                  <Text> Longitud: {longitud}</Text>
                 </VStack>
                 <Button
                   onPress={shareLocation}
@@ -151,6 +159,36 @@ const Ubication = () => {
           </MotiView>
         </Box>
       )}
+
+      <Modal
+        transparent={true}
+        visible={modalVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <RNView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <Box
+            width={"80%"}
+            padding={"$5"}
+            borderRadius={"$lg"}
+            bgColor="$white"
+            alignItems="center"
+          >
+            <Text>Aún no se ha recibido la ubicación</Text>
+            <Button
+              onPress={() => setModalVisible(false)}
+              action={'primary'}
+              size={"sm"}
+              borderRadius={'$xl'}
+              marginTop={"$3"}
+            >
+              <ButtonText>Cerrar</ButtonText>
+            </Button>
+          </Box>
+        </RNView>
+      </Modal>
     </View>
   );
 };
