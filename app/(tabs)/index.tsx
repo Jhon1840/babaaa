@@ -1,29 +1,32 @@
+import React, { useEffect, useState } from 'react';
 import { Box, Text } from "@gluestack-ui/themed";
-import { ScrollView } from "moti";
-import * as React from "react";
-import { useEffect, useState } from "react";
-import { View, Dimensions, StyleSheet, Modal, Alert, Button } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import LineChart from "react-native-simple-line-chart";
+import { ScrollView, View, Dimensions, StyleSheet, Modal, Alert, Button } from "react-native";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import LineChart from 'react-native-simple-line-chart';
 import { MotiView } from 'moti';
 import { supabase } from "@/utils/supabase";
+import { Linking } from 'react-native';
+import { TouchableOpacity} from 'react-native';
 
 const ACCELERATION_THRESHOLD = 3.0;
-const BUFFER_DURATION = 2000; 
+const BUFFER_DURATION = 2000;
 
 export default function App() {
-  const [data, setData] = React.useState([]);
-  const [timePassed, setTimePassed] = React.useState(0);
-  const [spo2, setSpo2] = useState(98); 
-  const [bpm, setBpm] = useState(56);
   const [modalVisible, setModalVisible] = useState(false);
+  const [data, setData] = useState([]);
+  const [timePassed, setTimePassed] = useState(0);
+  const [spo2, setSpo2] = useState(98);
+  const [bpm, setBpm] = useState(56);
   const [accelerationData, setAccelerationData] = useState([]);
-
-
-  React.useEffect(() => {
+  const   handleEmergencyCall = () => {
+    Linking.openURL(`tel:911`)
+      .catch(err => console.error('An error occurred', err));
+  }
+  
+  useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date().getTime();
-      const beatInterval = (bpm/60)*1000;
+      const beatInterval = (bpm / 60) * 1000;
       const peak = 100;
       const baseline = 50;
       let y;
@@ -48,60 +51,44 @@ export default function App() {
         x: now,
         extraData: {
           formattedValue: `${y.toFixed(0)} bpm`,
-          formattedTime: new Date(now)
-            .toISOString()
-            .split("T")[1]
-            .split(".")[0],
+          formattedTime: new Date(now).toISOString().split("T")[1].split(".")[0],
         },
       };
 
-      setData((currentData) => [...currentData.slice(-50), point]);
+      setData(currentData => [...currentData.slice(-50), point]);
       setTimePassed(timePassed + 50);
     }, 50);
 
     return () => clearInterval(interval);
-  }, [timePassed]);
+  }, [bpm, timePassed]);
 
   useEffect(() => {
-    const subscription = supabase.channel('room-1')
+    const alertSubscription = supabase
+      .channel('alerts')
+      .on('broadcast', { event: 'movement-alert' }, (payload) => {
+        if (payload.payload.alert) {
+          console.log("Alerta de movimiento brusco detectada!");
+          setModalVisible(true);
+        }
+      })
+      .subscribe();
+
+    const subscription = supabase
+      .channel('room-1')
       .on('broadcast', { event: 'new-data' }, (payload) => {
         const { ax, ay, az } = payload.payload.accelerometerGyroscopeData;
         const newData = { ax, ay, az, time: new Date().getTime() };
-  
-        setAccelerationData(current => {
-          // Filter to keep only recent data within the BUFFER_DURATION
-          const filteredData = current.filter(d => newData.time - d.time <= BUFFER_DURATION);
-  
-          // Calculate accumulatedChange if there's enough data
-          let accumulatedChange = 0;
-          for (let i = 1; i < filteredData.length; i++) {
-            const prev = filteredData[i - 1];
-            const curr = filteredData[i];
-            accumulatedChange += Math.sqrt(
-              Math.pow(curr.ax - prev.ax, 2) +
-              Math.pow(curr.ay - prev.ay, 2) +
-              Math.pow(curr.az - prev.az, 2)
-            );
-          }
-  
-          // Trigger modal if accumulatedChange exceeds threshold
-          if (accumulatedChange > ACCELERATION_THRESHOLD) {
-            console.log("Threshold exceeded, showing modal.");
-            setModalVisible(true);
-          }
-  
-          // Add new data to the buffer
-          return [...filteredData, newData];
-        });
-  
+
         setSpo2(payload.payload.heartRateSpo2Data.spo2);
         setBpm(payload.payload.heartRateSpo2Data.bpm);
       })
       .subscribe();
-    return () => subscription.unsubscribe();
+
+    return () => {
+      alertSubscription.unsubscribe();
+      subscription.unsubscribe();
+    };
   }, []);
-  
-  
 
   return (
     <ScrollView
@@ -113,6 +100,30 @@ export default function App() {
         paddingBottom: 200,
       }}
     >
+      <Modal
+  animationType="slide"
+  transparent={true}
+  visible={modalVisible}
+  onRequestClose={() => {
+    Alert.alert('Modal has been closed.');
+    setModalVisible(!modalVisible);
+  }}
+>
+  <View style={styles.centeredView}>
+    <View style={styles.modalView}>
+      <Text style={styles.modalText}>Movimiento Significativo Detectado!</Text>
+      <TouchableOpacity style={styles.button} onPress={handleEmergencyCall}>
+        <Text style={styles.buttonText}>Llamar Emergencias!</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.buttonLightBlue} onPress={() => setModalVisible(false)}>
+        <Text style={styles.buttonText}>Todo está Bien</Text>
+      </TouchableOpacity>
+
+    </View>
+  </View>
+</Modal>
+
+
       {[0, 1, 2, 3].map((item, index) => (
         <React.Fragment key={index}>
           <MotiView
@@ -121,23 +132,6 @@ export default function App() {
             transition={{ delay: index * 400, type: 'spring', duration: 250 }}
             style={{ width: '100%' }}
           >
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={modalVisible}
-            onRequestClose={() => {
-              Alert.alert('Modal has been closed.');
-              setModalVisible(!modalVisible);
-            }}
-          >
-            <View style={styles.centeredView}>
-              <View style={styles.modalView}>
-                <Text style={styles.modalText}>Movimiento Significativo Detectado!</Text>
-                <Button title="Llamar Emergencias!" onPress={() => setModalVisible(false)} />
-                <Button title="Todo esta Bien" onPress={() => setModalVisible(false)} />
-              </View>
-            </View>
-          </Modal>
             <Box
               bgColor="$white"
               width={"$full"}
@@ -154,7 +148,7 @@ export default function App() {
                 {index === 0 ? "Normal" : index === 1 ? "36 C" : index === 2 ? spo2 : bpm}
               </Text>
               <Text paddingTop={"$4"} paddingHorizontal="$5" fontWeight="$light">
-                {index === 0 ? "Estado de Salud" : index === 1 ? "Temperatura" : index === 2 ? "Nivel de Oxigeno en la Sangre" : "Frecuencia Cardiaca"}
+                {index === 0 ? "Estado de Salud" : index === 1 ? "Temperatura" : index === 2 ? "Nivel de Oxígeno en la Sangre" : "Frecuencia Cardíaca"}
               </Text>
               {index === 3 && (
                 <>
@@ -208,26 +202,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  paragraph: {
-    fontSize: 18,
-    textAlign: "center",
-  },
-  containerModal: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dataText: {
-    marginBottom: 10,
-    fontSize: 16,
-  },
   centeredView: {
     flex: 1,
     justifyContent: 'center',
@@ -253,5 +227,29 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: 'center',
     fontSize: 18,
-  }
-})
+  },
+  button: {
+    backgroundColor: "#2196F3", 
+    borderRadius: 20,          
+    padding: 10,                
+    elevation: 2,              
+    marginTop: 10,              
+    width: 200                 
+  },
+  buttonText: {
+    color: 'white',           
+    fontWeight: 'bold',        
+    textAlign: 'center',        
+    fontSize: 16,              
+  },
+  buttonLightBlue: {
+    backgroundColor: "#64B5F6", 
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+    marginTop: 10,
+    width: 200
+  },
+
+  
+});
